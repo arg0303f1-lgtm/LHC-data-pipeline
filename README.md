@@ -1,6 +1,6 @@
 # LHC Data Streaming & Monitoring Pipeline
 
-A real-time data streaming pipeline inspired by CERN's LHC data acquisition infrastructure. I built this to teach myself how detector data actually flows from readout to analysis — from event generation all the way through streaming, triggering, and live monitoring.
+A real-time data streaming pipeline inspired by CERN's LHC data acquisition infrastructure. I built this to teach myself how detector data actually flows from readout to analysis from event generation all the way through streaming, triggering, and live monitoring.
 
 The pipeline simulates proton-proton collision events in C++, streams them through Apache Kafka, applies physics trigger logic (similar to ATLAS/CMS HLT paths), stores results in SQLite, and visualizes everything on a live dashboard.
 
