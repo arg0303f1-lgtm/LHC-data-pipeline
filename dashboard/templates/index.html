@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LHC Data Pipeline — Live Monitor</title>
+    <meta name="description" content="Real-time monitoring dashboard for the LHC data streaming pipeline">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">
+                <span class="logo-icon">⚛</span>
+                <h1>LHC Data Pipeline</h1>
+            </div>
+            <span class="badge badge-live" id="status-badge">
+                <span class="pulse"></span> LIVE
+            </span>
+        </div>
+        <div class="header-right">
+            <div class="header-stat">
+                <span class="header-stat-label">Uptime</span>
+                <span class="header-stat-value" id="uptime">--</span>
+            </div>
+            <div class="header-stat">
+                <span class="header-stat-label">Avg Latency</span>
+                <span class="header-stat-value" id="avg-latency">-- ms</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="dashboard">
+        <!-- KPI Cards -->
+        <section class="kpi-row">
+            <div class="kpi-card">
+                <div class="kpi-icon" style="--accent: #6366f1;">📊</div>
+                <div class="kpi-content">
+                    <span class="kpi-value" id="total-events">0</span>
+                    <span class="kpi-label">Total Events</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon" style="--accent: #10b981;">⚡</div>
+                <div class="kpi-content">
+                    <span class="kpi-value" id="event-rate">0</span>
+                    <span class="kpi-label">Events/sec</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon" style="--accent: #f59e0b;">🎯</div>
+                <div class="kpi-content">
+                    <span class="kpi-value" id="triggered-events">0</span>
+                    <span class="kpi-label">Triggered</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon" style="--accent: #ef4444;">📈</div>
+                <div class="kpi-content">
+                    <span class="kpi-value" id="trigger-rate">0%</span>
+                    <span class="kpi-label">Trigger Rate</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts Row 1 -->
+        <section class="charts-row">
+            <div class="chart-card wide">
+                <div class="chart-header">
+                    <h2>Event Rate</h2>
+                    <span class="chart-subtitle">Events per second (last 30s)</span>
+                </div>
+                <div class="chart-body">
+                    <canvas id="rate-chart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h2>Event Composition</h2>
+                    <span class="chart-subtitle">By physics process</span>
+                </div>
+                <div class="chart-body">
+                    <canvas id="type-chart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts Row 2 -->
+        <section class="charts-row">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h2>Dimuon Invariant Mass</h2>
+                    <span class="chart-subtitle">M(μ⁺μ⁻) spectrum — Z boson peak at ~91 GeV</span>
+                </div>
+                <div class="chart-body">
+                    <canvas id="mass-chart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h2>Missing Transverse Energy</h2>
+                    <span class="chart-subtitle">E<sub>T</sub><sup>miss</sup> distribution</span>
+                </div>
+                <div class="chart-body">
+                    <canvas id="met-chart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Trigger Efficiency -->
+        <section class="charts-row">
+            <div class="chart-card wide">
+                <div class="chart-header">
+                    <h2>Trigger Efficiency</h2>
+                    <span class="chart-subtitle">Events passing each trigger path</span>
+                </div>
+                <div class="chart-body trigger-bars">
+                    <div class="trigger-bar-item">
+                        <div class="trigger-bar-label">
+                            <span>HLT_mu25</span>
+                            <span class="trigger-bar-count" id="trig-muon-count">0</span>
+                        </div>
+                        <div class="trigger-bar-track">
+                            <div class="trigger-bar-fill muon" id="trig-muon-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="trigger-bar-item">
+                        <div class="trigger-bar-label">
+                            <span>HLT_2mu_Zmass</span>
+                            <span class="trigger-bar-count" id="trig-dimuon-count">0</span>
+                        </div>
+                        <div class="trigger-bar-track">
+                            <div class="trigger-bar-fill dimuon" id="trig-dimuon-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="trigger-bar-item">
+                        <div class="trigger-bar-label">
+                            <span>HLT_4j50</span>
+                            <span class="trigger-bar-count" id="trig-jet-count">0</span>
+                        </div>
+                        <div class="trigger-bar-track">
+                            <div class="trigger-bar-fill jet" id="trig-jet-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="trigger-bar-item">
+                        <div class="trigger-bar-label">
+                            <span>HLT_met50</span>
+                            <span class="trigger-bar-count" id="trig-met-count">0</span>
+                        </div>
+                        <div class="trigger-bar-track">
+                            <div class="trigger-bar-fill met" id="trig-met-bar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <span>LHC Data Pipeline v1.0 • C++ / Kafka / Python / SQLite</span>
+        <span id="last-update">Last update: --</span>
+    </footer>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
