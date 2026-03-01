@@ -145,17 +145,36 @@ Event EventGenerator::generate_z_to_mumu() {
     double beta_z  = std::tanh(z_rapidity);
     double gamma_z = std::cosh(z_rapidity);
 
-    // boost muon 1
-    double e1  = gamma_z * (e1_rf + beta_z * pz1_rf);
-    double pz1 = gamma_z * (pz1_rf + beta_z * e1_rf);
-    double px1 = px1_rf + z_pt * std::cos(z_phi) * 0.5;
-    double py1 = py1_rf + z_pt * std::sin(z_phi) * 0.5;
+    // boost muons (longitudinal)
+    double e1_l  = gamma_z * (e1_rf + beta_z * pz1_rf);
+    double pz1_l = gamma_z * (pz1_rf + beta_z * e1_rf);
+    double e2_l  = gamma_z * (e2_rf + beta_z * pz2_rf);
+    double pz2_l = gamma_z * (pz2_rf + beta_z * e2_rf);
 
-    // boost muon 2
-    double e2  = gamma_z * (e2_rf + beta_z * pz2_rf);
-    double pz2 = gamma_z * (pz2_rf + beta_z * e2_rf);
-    double px2 = px2_rf + z_pt * std::cos(z_phi) * 0.5;
-    double py2 = py2_rf + z_pt * std::sin(z_phi) * 0.5;
+
+    // Now apply transverse boost/rotation to both muons
+    // Instead of splitting pT, we'll treat the Z boson as having a pT
+    // and correctly rotate/boost the system.
+    // For simplicity and correctness: boost along Z direction in transverse plane
+    double z_px = z_pt * std::cos(z_phi);
+    double z_py = z_pt * std::sin(z_phi);
+    double z_ee = std::sqrt(z_pt * z_pt + z_mass * z_mass * gamma_z * gamma_z);
+    double beta_t_x = z_px / z_ee;
+    double beta_t_y = z_py / z_ee;
+    double gamma_t  = 1.0 / std::sqrt(std::max(1e-10, 1.0 - beta_t_x * beta_t_x - beta_t_y * beta_t_y));
+
+    auto boost = [&](double e_in, double px_in, double py_in, double pz_in) {
+        double bp = beta_t_x * px_in + beta_t_y * py_in;
+        double e_out  = gamma_t * (e_in + bp);
+        double fact   = (gamma_t - 1.0) * bp / (beta_t_x * beta_t_x + beta_t_y * beta_t_y + 1e-10) + gamma_t * e_in;
+        double px_out = px_in + fact * beta_t_x;
+        double py_out = py_in + fact * beta_t_y;
+        double pz_out = pz_in;
+        return std::make_tuple(e_out, px_out, py_out, pz_out);
+    };
+
+    auto [e1, px1, py1, pz1] = boost(e1_l, px1_rf, py1_rf, pz1_l);
+    auto [e2, px2, py2, pz2] = boost(e2_l, px2_rf, py2_rf, pz2_l);
 
     // convert (px, py, pz, E) → (pt, eta, phi, E) for each muon
     auto to_obs = [](double px, double py, double pz) {
@@ -181,6 +200,7 @@ Event EventGenerator::generate_z_to_mumu() {
 
     evt.particles.push_back(mu1);
     evt.particles.push_back(mu2);
+
 
     // toss in a few ISR jets
     int n_jets = std::poisson_distribution<int>(2)(rng_);

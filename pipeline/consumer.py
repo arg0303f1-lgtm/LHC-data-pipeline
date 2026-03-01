@@ -125,11 +125,12 @@ class EventProcessor:
 
         # track per-second event rate
         now_sec = int(time.time())
-        if now_sec != self._last_sec:
+        while self._last_sec < now_sec:
             self.stats["recent_rates"].append(self._sec_count)
             self._sec_count = 0
-            self._last_sec = now_sec
+            self._last_sec += 1
         self._sec_count += 1
+
 
         # insert into SQLite
         self.conn.execute(
@@ -168,7 +169,15 @@ class EventProcessor:
 
     def get_stats_snapshot(self) -> dict:
         """Build a summary dict for the dashboard to display."""
+        # catch up on any idle time before returning stats
+        now_sec = int(time.time())
+        while self._last_sec < now_sec:
+            self.stats["recent_rates"].append(self._sec_count)
+            self._sec_count = 0
+            self._last_sec += 1
+
         elapsed = time.time() - self.stats["start_time"]
+
         total = self.stats["total_events"]
         avg_rate = total / elapsed if elapsed > 0 else 0
 
